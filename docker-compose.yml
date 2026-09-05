@@ -4,6 +4,17 @@ networks:
     cors_dev:
         external: true
 
+# Environment of every PHP container: .env plus the developer's .env.local (registration values,
+# admin credentials), with the local stack running the dev environment.
+x-php-env: &php-env
+    env_file:
+        - .env
+        - path: .env.local
+          required: false
+    environment:
+        APP_ENV: dev
+        COMPOSER_AUTH: ${COMPOSER_AUTH:-}
+
 services:
     db:
         image: mysql:8
@@ -41,41 +52,68 @@ services:
             - traefik.http.services.coreshop5_demo.loadbalancer.server.port=80
             - traefik.docker.network=cors_dev
 
-    php:
+    # One-shot first-start service: installs the composer dependencies when vendor/ is missing,
+    # waits for the database and runs the install script (Pimcore, CoreShop, demo data) once.
+    # The PHP containers only start after it has finished.
+    install:
         image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.21-7.1.0
+        <<: *php-env
+        entrypoint: ["sh", ".docker/php/docker-dev-install.sh"]
+        restart: "no"
         networks:
             - default
-        environment:
-            - COMPOSER_AUTH=${COMPOSER_AUTH}
+        links:
+            - db:database
+            - opensearch:os
+        depends_on:
+            - db
+            - opensearch
+        volumes:
+            - .:/var/www/html:cached
+
+    php:
+        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.21-7.1.0
+        <<: *php-env
+        networks:
+            - default
         links:
             - db:database
             - opensearch:os
             - mercure:mercure
         depends_on:
-            - db
+            install:
+                condition: service_completed_successfully
         volumes:
             - .:/var/www/html:cached
 
     php-debug:
         image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm-debug:8.3-alpine3.21-7.1.0
+        env_file:
+            - .env
+            - path: .env.local
+              required: false
+        environment:
+            APP_ENV: dev
+            COMPOSER_AUTH: ${COMPOSER_AUTH:-}
+            PHP_IDE_CONFIG: "serverName=localhost"
         networks:
             - default
         depends_on:
-            - db
+            install:
+                condition: service_completed_successfully
         links:
             - db:database
             - opensearch:os
             - mercure:mercure
         volumes:
             - .:/var/www/html:cached
-        environment:
-            PHP_IDE_CONFIG: "serverName=localhost"
-            COMPOSER_AUTH: ${COMPOSER_AUTH}
 
     supervisord:
         image: ghcr.io/cors-gmbh/pimcore-docker/php-supervisord:8.3-alpine3.21-7.1.0
+        <<: *php-env
         depends_on:
-            - db
+            install:
+                condition: service_completed_successfully
         links:
             - db:database
             - opensearch:os
