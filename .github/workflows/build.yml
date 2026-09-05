@@ -12,6 +12,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   IMAGE_BASE: ghcr.io/coreshop/demo5
   MANIFEST_REPO: coreshop/demo5-manifest
@@ -97,4 +101,9 @@ jobs:
           git config user.name "demo5-ci"
           git config user.email "demo5-ci@cors.gmbh"
           git commit -am "update image tag to $TAG" || echo "nothing to commit"
-          git push origin HEAD:main
+          # other repositories push to the same manifest, retry on a non fast-forward push
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
