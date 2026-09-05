@@ -42,6 +42,8 @@ bin/console pimcore:bundle:install PimcoreApplicationLoggerBundle --no-post-chan
 bin/console generic-data-index:update:index -r
 bin/console coreshop:install:demo --no-interaction
 bin/console generic-data-index:update:index -r
+# the demo assets ship without thumbnails, generate the product sizes now instead of on the first request
+bin/console pimcore:thumbnails:image --thumbnails=coreshop_productGrid,coreshop_productList,coreshop_productDetail,coreshop_productDetailThumbnail,coreshop_productCart,coreshop_productCartPreview --skip-high-res
 
 # The cache built by the installer must not be reused by php-fpm; a failure to remove it
 # (e.g. a bind mount that keeps directory entries) is not fatal.
