@@ -21,8 +21,18 @@ jobs:
           php-version: "8.3"
           extensions: intl, gd, simpleXML, dom, exif, fileinfo, iconv, mbstring, mysqli, pdo_mysql, zip, zlib, imagick
       - run: composer update --no-interaction --no-progress --no-scripts
+      # a PR opened with GITHUB_TOKEN triggers no workflows; use the coreshop GitHub App so the
+      # static and build checks run on the update PR
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
       - uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ steps.app-token.outputs.token }}
           branch: chore/composer-update
           title: "Update composer.lock"
           commit-message: "Update composer.lock"
