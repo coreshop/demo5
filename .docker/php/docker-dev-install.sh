@@ -25,6 +25,7 @@ fi
 mkdir -p var/cache var/log public/var
 
 /usr/local/bin/wait_db
+until curl -sf -o /dev/null http://os:9200; do echo "Waiting for OpenSearch to be ready..."; sleep 2; done
 sh .docker/php/docker-install.sh
 
 echo "CoreShop demo installed: https://coreshop5-demo.localhost (admin: $PIMCORE_INSTALL_ADMIN_USERNAME)"
