@@ -5,7 +5,7 @@ set -e
 # secret / docker compose .env), they are not part of the repository:
 #   PIMCORE_ENCRYPTION_SECRET    defuse key for pimcore.encryption.secret (config/config.yaml)
 #   PIMCORE_INSTANCE_IDENTIFIER  Pimcore instance identifier
-#   PIMCORE_PRODUCT_KEY          Pimcore product key (optional for demos)
+#   PIMCORE_PRODUCT_KEY          Pimcore product key (required at runtime, see README)
 for var in PIMCORE_ENCRYPTION_SECRET PIMCORE_INSTANCE_IDENTIFIER; do
   if [ -z "$(printenv "$var")" ]; then
     echo "$var is not set" >&2

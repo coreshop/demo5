@@ -10,6 +10,9 @@
     "allow-plugins": {
       "php-http/discovery": true,
       "symfony/runtime": true
+    },
+    "platform": {
+      "php": "8.3.16"
     }
   },
   "require": {
