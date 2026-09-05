@@ -25,7 +25,7 @@ The install script `.docker/php/docker-install.sh` reads its secrets from the en
 |---|---|
 | `PIMCORE_ENCRYPTION_SECRET` | defuse key for `pimcore.encryption.secret` (`vendor/bin/generate-defuse-key`) |
 | `PIMCORE_INSTANCE_IDENTIFIER` | Pimcore instance identifier |
-| `PIMCORE_PRODUCT_KEY` | Pimcore product key, optional for a demo |
+| `PIMCORE_PRODUCT_KEY` | Pimcore product key; **required**, Pimcore refuses to boot with an encryption secret but no registered product key (register the instance identifier at https://license.pimcore.com/register) |
 
 Set them in `.env.local` for docker compose; in Kubernetes they come from the `pimcore` secret of
 the manifest repository.
@@ -34,14 +34,21 @@ the manifest repository.
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `build.yml` | push to `main`, PR | builds the images `php-alpine-fpm`, `php-alpine-supervisord`, `nginx`; on `main` pushes them to `europe-west3-docker.pkg.dev/cors-wolke/cors/coreshop/demo5/*` tagged `main-<sha>` and bumps the tags in [coreshop/demo5-manifest](https://github.com/coreshop/demo5-manifest) |
+| `build.yml` | push to `main`, PR | builds the images `php-alpine-fpm`, `php-alpine-supervisord`, `nginx`; on `main` pushes them to `ghcr.io/coreshop/demo5/{php-fpm,php-supervisord,nginx}` tagged `main-<sha>` and `latest` and bumps the tags in [coreshop/demo5-manifest](https://github.com/coreshop/demo5-manifest) |
 | `static.yml` | push, PR | `composer validate`, YAML/Twig/container lint, phpstan level 1 on `src/` |
 | `composer-update.yml` | daily 03:00, manual | `composer update` as a pull request |
 
-Required repository secrets:
+Required secrets:
 
-- `GOOGLE_CREDENTIALS`: service account JSON with Artifact Registry writer on `cors-wolke`
-- `MANIFEST_PUSH_TOKEN`: fine-grained GitHub token with `contents: write` on `coreshop/demo5-manifest`
+- `GITHUB_TOKEN` (automatic, `packages: write`): pushes the images to the GitHub Container Registry
+- `GH_APP_ID`, `GH_APP_PRIVATE_KEY` (org secrets, already present): the coreshop GitHub App mints the token
+  for the manifest push; the app must be installed on `coreshop/demo5-manifest` with `contents: write`
+
+No `COMPOSER_AUTH` is needed, every dependency comes from packagist.org.
+
+The container packages are created private by GitHub on the first push; switch
+`ghcr.io/coreshop/demo5/*` to public once in the GitHub UI (Packages → package → settings), or keep them
+private and let the cluster pull with the `ghcr-pull` secret described in the manifest repository.
 
 Deployment itself happens from the manifest repository (Helm chart, synced by the cluster).
 

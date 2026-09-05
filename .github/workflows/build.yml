@@ -1,9 +1,10 @@
 name: Build
 
 # Builds the three images of the demo and, on pushes to main, pushes them to the
-# GCP Artifact Registry and bumps the image tags in the manifest repository.
-# Required secrets: GOOGLE_CREDENTIALS (service account JSON with Artifact Registry
-# writer), MANIFEST_PUSH_TOKEN (fine-grained PAT, contents:write on the manifest repo).
+# GitHub Container Registry (ghcr.io/coreshop/demo5/*) and bumps the image tags in the
+# manifest repository. Secrets: GITHUB_TOKEN (packages: write) for the registry and the
+# org secrets GH_APP_ID / GH_APP_PRIVATE_KEY of the coreshop GitHub App, which must be
+# installed on the manifest repository with contents: write.
 
 on:
   push:
@@ -12,8 +13,7 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: europe-west3-docker.pkg.dev
-  IMAGE_BASE: europe-west3-docker.pkg.dev/cors-wolke/cors/coreshop/demo5
+  IMAGE_BASE: ghcr.io/coreshop/demo5
   MANIFEST_REPO: coreshop/demo5-manifest
 
 jobs:
@@ -22,12 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
         image:
-          - { name: php-alpine-fpm, target: cors_php }
-          - { name: php-alpine-supervisord, target: cors_php_supervisord }
+          - { name: php-fpm, target: cors_php }
+          - { name: php-supervisord, target: cors_php_supervisord }
           - { name: nginx, target: cors_nginx }
     steps:
       - uses: actions/checkout@v4
@@ -38,15 +39,13 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Authenticate to Google Cloud
+      - name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: google-github-actions/auth@v2
+        uses: docker/login-action@v3
         with:
-          credentials_json: ${{ secrets.GOOGLE_CREDENTIALS }}
-
-      - name: Configure Docker for Artifact Registry
-        if: github.event_name != 'pull_request'
-        run: gcloud auth configure-docker ${{ env.REGISTRY }} --quiet
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -54,7 +53,9 @@ jobs:
           context: .
           target: ${{ matrix.image.target }}
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ env.IMAGE_BASE }}/${{ matrix.image.name }}:${{ steps.tag.outputs.tag }}
+          tags: |
+            ${{ env.IMAGE_BASE }}/${{ matrix.image.name }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_BASE }}/${{ matrix.image.name }}:latest
           build-args: |
             APP_ENV=prod
           cache-from: type=gha,scope=${{ matrix.image.name }}
@@ -70,11 +71,20 @@ jobs:
         id: tag
         run: echo "tag=main-$(echo ${{ github.sha }} | cut -c1-8)" >> "$GITHUB_OUTPUT"
 
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          owner: coreshop
+          repositories: demo5-manifest
+
       - name: Checkout manifest
         uses: actions/checkout@v4
         with:
           repository: ${{ env.MANIFEST_REPO }}
-          token: ${{ secrets.MANIFEST_PUSH_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           path: manifest
 
       - name: Set image tags
