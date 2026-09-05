@@ -38,11 +38,16 @@ COPY --chown=www-data:www-data translations translations/
 COPY --chown=www-data:www-data var var/
 COPY --chown=www-data:www-data .env .env
 
+# The build-time console calls boot the kernel without database, encryption secret and
+# product key; the "needs install" marker makes Pimcore skip the product registration
+# check for these calls. The real values come from the container environment at runtime.
 RUN set -eux; \
     composer dump-autoload; \
+    mkdir -p var/config; touch var/config/needs-install.lock; \
     bin/console cache:clear --env=$APP_ENV; \
     bin/console assets:install; \
     PIMCORE_DISABLE_CACHE=1 bin/console pimcore:build:classes; \
+    rm -f var/config/needs-install.lock; \
     COMPOSER_MEMORY_LIMIT=-1 composer dump-autoload --classmap-authoritative; \
     sync;
 
