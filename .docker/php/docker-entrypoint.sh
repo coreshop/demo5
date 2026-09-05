@@ -8,13 +8,5 @@ fi
 
 /usr/local/bin/wait_db
 /usr/local/bin/install
-bin/console pimcore:bundle:install PimcoreSimpleBackendSearchBundle --no-post-change-commands
-bin/console coreshop:install
-bin/console pimcore:bundle:install PimcoreStudioBackendBundle --no-post-change-commands
-bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle --no-post-change-commands
-bin/console pimcore:bundle:install PimcoreApplicationLoggerBundle --no-post-change-commands
-bin/console generic-data-index:update:index -r
-bin/console coreshop:install:demo
-bin/console generic-data-index:update:index -r
 
 exec docker-php-entrypoint "$@"

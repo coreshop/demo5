@@ -8,27 +8,41 @@ Live: https://demo5.coreshop.org (admin: `/admin`, Studio: `/pimcore-studio`).
 
 ## Run locally
 
-Requirements: Docker. The images are built from `ghcr.io/cors-gmbh/pimcore-docker`.
+Requirements: Docker with Compose v2.24 or newer and the running cors dev traefik (network
+`cors_dev`, host names `*.localhost`). The images come from `ghcr.io/cors-gmbh/pimcore-docker`
+(PHP 8.3); the repository is bind-mounted, nothing is built locally.
 
 ```bash
-cp .env .env.local            # adjust if needed
+cp .env .env.local
+# fill in PIMCORE_ENCRYPTION_SECRET, PIMCORE_INSTANCE_IDENTIFIER and PIMCORE_PRODUCT_KEY in .env.local
 docker compose up -d
-docker compose logs -f php    # wait for "Pimcore installed"; first start installs Pimcore, CoreShop and the demo data
+docker compose logs -f install   # wait for "CoreShop demo installed"
 ```
 
-Then open http://localhost (shop), http://localhost/admin (user `admin`, password from the
-installer output) and http://localhost/pimcore-studio.
+The first start runs the one-shot `install` service (`.docker/php/docker-dev-install.sh`): it
+installs the composer dependencies when `vendor/` is missing, waits for the database and runs
+`.docker/php/docker-install.sh`, which installs Pimcore, the Pimcore bundles, CoreShop and the demo
+data. The php, php-debug and supervisord containers start after it has finished. Later starts detect
+the existing installation and skip it; `docker compose down -v` gives you a fresh shop.
 
-The install script `.docker/php/docker-install.sh` reads its secrets from the environment:
+| URL | Login |
+|---|---|
+| https://coreshop5-demo.localhost | shop |
+| https://coreshop5-demo.localhost/admin | `admin` / `coreshop` (ExtJS admin) |
+| https://coreshop5-demo.localhost/pimcore-studio | `admin` / `coreshop` (Studio) |
+
+Environment (`.env` plus the optional `.env.local`, both passed to every PHP container; the local stack
+runs `APP_ENV=dev`):
 
 | Variable | Purpose |
 |---|---|
-| `PIMCORE_ENCRYPTION_SECRET` | defuse key for `pimcore.encryption.secret` (`vendor/bin/generate-defuse-key`) |
-| `PIMCORE_INSTANCE_IDENTIFIER` | Pimcore instance identifier |
-| `PIMCORE_PRODUCT_KEY` | Pimcore product key; **required**, Pimcore refuses to boot with an encryption secret but no registered product key (register the instance identifier at https://license.pimcore.com/register) |
+| `PIMCORE_ENCRYPTION_SECRET` | defuse key for `pimcore.encryption.secret` (`vendor/bin/generate-defuse-key`), **required** |
+| `PIMCORE_INSTANCE_IDENTIFIER` | Pimcore instance identifier, **required** |
+| `PIMCORE_PRODUCT_KEY` | Pimcore product key, **required**: Pimcore refuses to boot with an encryption secret but no registered product key (register the instance identifier at https://license.pimcore.com/register) |
+| `PIMCORE_INSTALL_ADMIN_USERNAME`, `PIMCORE_INSTALL_ADMIN_PASSWORD` | admin user created by the installer, default `admin` / `coreshop` |
 
-Set them in `.env.local` for docker compose; in Kubernetes they come from the `pimcore` secret of
-the manifest repository.
+In Kubernetes the same variables come from the `pimcore` secret of the manifest repository, and the
+image entrypoint runs the same install script.
 
 ## CI/CD
 
