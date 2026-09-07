@@ -2,7 +2,7 @@
   "name": "pimcore/skeleton",
     "description": "CoreShop 5.1 demo shop on Pimcore 12",
   "type": "project",
-  "license": "GPL-3.0-or-later",
+  "license": "proprietary",
   "config": {
     "optimize-autoloader": true,
     "sort-packages": true,
