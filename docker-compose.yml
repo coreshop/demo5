@@ -56,7 +56,7 @@ services:
     # waits for the database and runs the install script (Pimcore, CoreShop, demo data) once.
     # The PHP containers only start after it has finished.
     install:
-        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.21-7.1.0
+        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.23-8.1.29
         <<: *php-env
         entrypoint: ["sh", ".docker/php/docker-dev-install.sh"]
         restart: "no"
@@ -72,7 +72,7 @@ services:
             - .:/var/www/html:cached
 
     php:
-        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.21-7.1.0
+        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm:8.3-alpine3.23-8.1.29
         <<: *php-env
         networks:
             - default
@@ -87,7 +87,7 @@ services:
             - .:/var/www/html:cached
 
     php-debug:
-        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm-debug:8.3-alpine3.21-7.1.0
+        image: ghcr.io/cors-gmbh/pimcore-docker/php-fpm-debug:8.3-alpine3.23-8.1.29
         env_file:
             - .env
             - path: .env.local
@@ -109,7 +109,7 @@ services:
             - .:/var/www/html:cached
 
     supervisord:
-        image: ghcr.io/cors-gmbh/pimcore-docker/php-supervisord:8.3-alpine3.21-7.1.0
+        image: ghcr.io/cors-gmbh/pimcore-docker/php-supervisord:8.3-alpine3.23-8.1.29
         <<: *php-env
         depends_on:
             install:
